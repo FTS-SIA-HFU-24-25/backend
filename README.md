@@ -6,6 +6,8 @@ This is a UDP & TCP Server that receives messages as in Byte Array and sends bac
 
 For receiving data we specify them in multiple cases
 
+---
+
 ### Establishing Connection
 
 For a hardware to establish a connection with the server, first you need send a TCP request to the server and the server will response you with a UUID that you can use for your UDP data streams
@@ -14,6 +16,7 @@ It will to this following endpoint:
 
 > http://<YOUR_DOMAIN>/api/connection
 
+---
 
 ### Streaming UDP data from Serial
 
@@ -31,6 +34,8 @@ After that you send the data in chunks that you like, until you reached the leng
 
 > [UUID, LENGTH, DATA]
 
+---
+
 #### Streaming without knowing the length
 
 **Connection beginn**
@@ -47,6 +52,8 @@ After that you just stream data, until your message look like this. This will me
 
 > [UUID, VERSION, 0]
 
+---
+
 #### Specifying the data type
 
 In the previous section, we know how to stream data to the server from your serial. Now you have specify what kind of data you have sent to the server.
@@ -57,8 +64,9 @@ These are the supported sensors and hardware:
   - AD8232 ECG Sensor
   - LM-35 Temperature Sensor
 
+---
 
-**Specifying the data**
+#### Avaiable data types
 
 This is the normal data format that you will send to the server
 
