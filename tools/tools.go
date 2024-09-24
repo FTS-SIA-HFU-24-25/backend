@@ -2,16 +2,37 @@ package tools
 
 import (
 	"log"
-	"os"
+
+	"github.com/bwmarrin/snowflake"
 )
 
-func Log(t int, header string, err interface{}) {
-	switch t {
-	default:
-	case 0:
-		log.Println(header, ":", err)
-	case 1:
-		log.Fatal(header, ":", err)
-		os.Exit(1)
+var (
+	NodeID int64 = 1
+)
+
+func Log(header string, err interface{}) {
+	log.Println(header, ":", err)
+}
+
+func GenerateUUID() [8]byte {
+	node, err := snowflake.NewNode(NodeID)
+	if err != nil {
+		return [8]byte{}
 	}
+
+	id := node.Generate()
+	NodeID++
+	return id.IntBytes()
+}
+
+func AddIndexToData(arr []byte, index byte) []byte {
+	if len(arr) == 0 {
+		return []byte{index}
+	}
+
+	copy(arr[1:], arr[:len(arr)-1])
+
+	arr[0] = index
+
+	return arr
 }

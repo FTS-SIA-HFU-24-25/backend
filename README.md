@@ -34,6 +34,13 @@ After that you send the data in chunks that you like, until you reached the leng
 
 > [UUID, LENGTH, DATA]
 
+
+### Important
+
+The length of `UUID` is alway 8, so the first 8 bytes are reserved only for **UUID**
+
+The length cannot be longer then 255, because it is the max value of a byte.
+
 ---
 
 #### Streaming without knowing the length
