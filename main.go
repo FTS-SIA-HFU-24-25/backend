@@ -1,15 +1,9 @@
 package main
 
 import (
-	"crypto/sha1"
-	"io"
-	"log"
-	"sia/backend/handler"
+	"sia/backend/db"
+	"sia/backend/server"
 	"sia/backend/tools"
-	"time"
-
-	"github.com/xtaci/kcp-go/v5"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 func init() {
@@ -17,59 +11,17 @@ func init() {
 }
 
 func main() {
-	tools.Log("[SERVER]", "Starting server...")
-	key := pbkdf2.Key([]byte(tools.UDP_PASSWORD), []byte(tools.UDP_SALT), 1024, 32, sha1.New)
-	block, _ := kcp.NewAESBlockCrypt(key)
+	tools.Log("[APP]", "Starting application...")
 
-	if listener, err := kcp.ListenWithOptions(tools.UDP_ADDR, block, 10, 3); err == nil {
-		// spin-up the client
-		tools.Log("[SERVER]", tools.UDP_ADDR)
-		go client()
-		for {
-			s, err := listener.AcceptKCP()
-			if err != nil {
-				log.Fatal(err)
-			}
-			go handler.HandleSerialController(s)
-		}
-	} else {
-		log.Fatal(err)
-	}
-}
+	// Initialize Redis and PostgreSQL
+	db.InitRedis()
+	db.InitDB()
 
-func client() {
-	tools.Log("[CLIENT]", "Starting client...")
-	key := pbkdf2.Key([]byte(tools.UDP_PASSWORD), []byte(tools.UDP_SALT), 1024, 32, sha1.New)
-	block, _ := kcp.NewAESBlockCrypt(key)
+	// Start the TCP server
+	go func() {
+		tools.Log("[TCP]", "Starting TCP server...")
+		server.OpenTCPServer()
+	}()
 
-	// wait for server to become ready
-	time.Sleep(time.Second)
-
-	// dial to the echo server
-	if sess, err := kcp.DialWithOptions(tools.UDP_ADDR, block, 10, 3); err == nil {
-		for {
-			// Example: Sending a byte array
-			data := []byte{0x01, 0x02, 0x03, 0x04, 0x05}
-			log.Println("sent:", data)
-
-			// Send byte array
-			if _, err := sess.Write(data); err == nil {
-				// Buffer to read back the same number of bytes
-				buf := make([]byte, len(data))
-
-				// Read back the data
-				if _, err := io.ReadFull(sess, buf); err == nil {
-					log.Println("recv:", buf)
-				} else {
-					log.Fatal(err)
-				}
-			} else {
-				log.Fatal(err)
-			}
-
-			time.Sleep(time.Second)
-		}
-	} else {
-		log.Fatal(err)
-	}
+	select {}
 }

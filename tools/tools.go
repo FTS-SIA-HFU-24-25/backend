@@ -2,8 +2,6 @@ package tools
 
 import (
 	"log"
-
-	"github.com/bwmarrin/snowflake"
 )
 
 var (
@@ -14,15 +12,12 @@ func Log(header string, err interface{}) {
 	log.Println(header, ":", err)
 }
 
-func GenerateUUID() [8]byte {
-	node, err := snowflake.NewNode(NodeID)
-	if err != nil {
-		return [8]byte{}
+func ConvertStringToInt64(str string) int64 {
+	var num int64
+	for _, char := range str {
+		num = num*10 + int64(char-'0')
 	}
-
-	id := node.Generate()
-	NodeID++
-	return id.IntBytes()
+	return num
 }
 
 func AddIndexToData(arr []byte, index byte) []byte {
