@@ -2,11 +2,15 @@ package tools
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
 var (
+	// Server Variables
+	SERVICE_VERSION int
+
 	// UDP Server Variables
 	UDP_PASSWORD string
 	UDP_SALT     string
@@ -33,6 +37,10 @@ var (
 
 func LoadEnv() {
 	err := godotenv.Load()
+	if err != nil {
+		panic(err)
+	}
+	SERVICE_VERSION, err = strconv.Atoi(os.Getenv("SERVICE_VERSION"))
 	if err != nil {
 		panic(err)
 	}

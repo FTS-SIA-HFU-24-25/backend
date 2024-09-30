@@ -1,4 +1,4 @@
-# Backend
+# Back-End
 
 This is a UDP & TCP Server that receives messages as in Byte Array and sends back with the same data format.
 
@@ -24,20 +24,15 @@ To stream your serial data that you received from your sensors, you need to foll
 
 #### Connection with specified length
 
-**Connection beginn**
+**Connection begin**
 
-This is when you say to the server: `Hey, I'm this, I want to send this length of data`
+You send the data in chunks that you like, until you reached the length, that you have provided
 
-> [UUID, VERSION, LENGTH, DATA_TYPE]
-
-After that you send the data in chunks that you like, until you reached the length, that you have provided
-
-> [UUID, LENGTH, DATA]
-
+> [UUID, VERSION, LENGTH, DATA]
 
 ### Important
 
-The length of `UUID` is alway 8, so the first 8 bytes are reserved only for **UUID**
+The length of `UUID` is 8, so the first 8 bytes are reserved only for **UUID**
 
 The length cannot be longer then 255, because it is the max value of a byte.
 
@@ -67,9 +62,9 @@ In the previous section, we know how to stream data to the server from your seri
 
 These are the supported sensors and hardware:
 
-  - GPS Sensor on Arduino mkr gsm 1400
-  - AD8232 ECG Sensor
-  - LM-35 Temperature Sensor
+- GPS Sensor on Arduino mkr gsm 1400
+- AD8232 ECG Sensor
+- LM-35 Temperature Sensor
 
 ---
 
@@ -81,14 +76,14 @@ This is the normal data format that you will send to the server
 
 But you can also specify the data type that you have sent to the server. By specifying the first byte of your data by replacing the `DATA_TYPE` for these avaiable bytes.
 
-  > This is in binary
+> This is in binary
 
-  - 0001: GPS Sensor on Arduino mkr gsm 1400
-  - 0002: AD8232 ECG Sensor
-  - 0003: LM-35 Temperature Sensor
+- 0001: GPS Sensor on Arduino mkr gsm 1400
+- 0002: AD8232 ECG Sensor
+- 0003: LM-35 Temperature Sensor
 
-  > In bytes
+> In bytes
 
-  - 1: GPS Sensor on Arduino mkr gsm 1400
-  - 2: AD8232 ECG Sensor
-  - 3: LM-35 Temperature Sensor
+- 1: GPS Sensor on Arduino mkr gsm 1400
+- 2: AD8232 ECG Sensor
+- 3: LM-35 Temperature Sensor

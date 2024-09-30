@@ -8,7 +8,7 @@ var (
 	NodeID int64 = 1
 )
 
-func Log(header string, err interface{}) {
+func Log(header string, err ...interface{}) {
 	log.Println(header, ":", err)
 }
 

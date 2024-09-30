@@ -2,7 +2,10 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"sia/backend/models"
 	"sia/backend/tools"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -38,7 +41,7 @@ func (h RDB) Get(key string) (string, string) {
 }
 
 func (h RDB) Set(key string, value interface{}) string {
-	_, err := h.Client.Set(context.Background(), key, value, 0).Result()
+	_, err := h.Client.Set(context.Background(), key, value, time.Hour).Result()
 	if err != nil {
 		return tools.HandleRedisError(err)
 	}
@@ -62,6 +65,17 @@ func (h RDB) Exists(key string) string {
 	}
 
 	return tools.OK
+}
+
+func (h RDB) GetConnection(key [8]byte) (models.Connection, string) {
+	data, err := h.Get(fmt.Sprintf("%x", key))
+	if err != tools.OK {
+		return models.Connection{}, err
+	}
+
+	var conn models.Connection
+	conn.UnmarshalBinary([]byte(data))
+	return conn, tools.OK
 }
 
 func (h RDB) Close() {

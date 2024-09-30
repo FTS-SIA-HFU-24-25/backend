@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"sia/backend/models/types"
 	"time"
 )
 
@@ -9,9 +10,8 @@ type (
 	Connection struct {
 		Uuid       [8]byte   `json:"uuid"`
 		CreatedAt  time.Time `json:"created_at"`
-		EcgHeader  byte      `json:"ecg_header"`
-		GPSHeader  byte      `json:"gps_header"`
-		TempHeader byte      `json:"temp_header"`
+		Type types.DataType `json:"type"`
+		Data []byte `json:"data"`
 	}
 )
 

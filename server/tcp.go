@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sia/backend/db"
 	"sia/backend/models"
+	"sia/backend/models/types"
 	"sia/backend/tools"
 	"sia/backend/uuid"
 	"time"
@@ -22,14 +23,13 @@ func OpenTCPServer() {
 	s := &http.Server{
 		Addr: ":8080",
 	}
+	tools.Log("[TCP]", "Server running on port 8080")
 	s.ListenAndServe()
 }
 
 type connectionRequest struct {
-	HardwareID int64 `json:"hardware_id" validate:"required,min=1,max=255"`
-	EcgHeader  byte  `json:"ecg_header" validate:"required"`
-	GPSHeader  byte  `json:"gps_header" validate:"required"`
-	TempHeader byte  `json:"temp_header" validate:"required"`
+	HardwareID int64          `json:"hardware_id" validate:"required,min=1,max=255"`
+	Type       types.DataType `json:"type" validate:"required,min=0"`
 }
 
 func handleConnection(w http.ResponseWriter, r *http.Request) {
@@ -54,11 +54,10 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 
 	uuid := uuid.GenerateUUID(req.HardwareID)
 	con := models.Connection{
-		Uuid:       uuid,
-		CreatedAt:  time.Now(),
-		EcgHeader:  req.EcgHeader,
-		GPSHeader:  req.GPSHeader,
-		TempHeader: req.TempHeader,
+		Uuid:      uuid,
+		CreatedAt: time.Now(),
+		Data:      []byte{},
+		Type:      req.Type,
 	}
 
 	err := db.RedisDB.Set(fmt.Sprintf("%x", uuid), con)
