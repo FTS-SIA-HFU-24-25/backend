@@ -7,6 +7,7 @@ import (
 )
 
 func InitUDPServer() {
+	lib.Print(lib.UDP_SERVICE, "Starting UDP server")
 	addr := net.UDPAddr{
 		Port: int(lib.UDP_PORT),
 		IP:   net.ParseIP(lib.UDP_ADDR),
