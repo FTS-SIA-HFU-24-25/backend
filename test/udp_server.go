@@ -48,7 +48,6 @@ func RunTestUDPClient() {
 			data := append(lib.Float64ToBytes(latitude), lib.Float64ToBytes(longitude)...)
 			sendData(conn, dataType, data)
 			lib.Print(lib.UDP_SERVICE, "Sent GPS data")
-
 		default:
 			lib.Print(lib.UDP_SERVICE, "Invalid data type")
 		}

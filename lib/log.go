@@ -10,8 +10,8 @@ const (
 func Print(s int, val interface{}) {
 	switch s {
 	case UDP_SERVICE:
-		fmt.Printf("UDP: %v", val)
+		fmt.Printf("[UDP] %v \n", val)
 	case TCP_SERVICE:
-		fmt.Printf("TCP: %v", val)
+		fmt.Printf("[TCP] %v \n", val)
 	}
 }
