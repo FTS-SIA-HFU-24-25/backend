@@ -5,6 +5,7 @@ import "fmt"
 const (
 	UDP_SERVICE = iota
 	TCP_SERVICE
+	WEBSOCKET_SERVICE
 )
 
 func Print(s int, val interface{}) {
