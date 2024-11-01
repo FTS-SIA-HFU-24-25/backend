@@ -10,7 +10,14 @@ import (
 var (
 	// Environment variables
 	UDP_ADDR string
-	UDP_PORT int64
+	UDP_PORT int
+
+	// TCP Vars
+	TCP_ADDR string
+	TCP_PORT int
+
+	// Websocket
+	WEBSOCKET_PATH string
 )
 
 func InitEnvVars() {
@@ -19,7 +26,10 @@ func InitEnvVars() {
 		panic(err)
 	}
 	UDP_ADDR = LoadEnvVar("UDP_ADDR")
-	UDP_PORT, err = strconv.ParseInt(LoadEnvVar("UDP_PORT"), 10, 0)
+	UDP_PORT, err = strconv.Atoi(LoadEnvVar("UDP_PORT"))
+	TCP_ADDR = LoadEnvVar("TCP_ADDR")
+	TCP_PORT, err = strconv.Atoi(LoadEnvVar("TCP_PORT"))
+	WEBSOCKET_PATH = LoadEnvVar("WEBSOCKET_PATH")
 	if err != nil {
 		panic(err)
 	}
