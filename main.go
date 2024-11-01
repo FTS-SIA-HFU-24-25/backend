@@ -15,6 +15,7 @@ func main() {
 
 	go server.InitUDPServer(iotEventChannel, websocketEventChannel)
 	go test.RunTestUDPClient()
+	go server.InitTCPServer(iotEventChannel, websocketEventChannel)
 
 	select {}
 }

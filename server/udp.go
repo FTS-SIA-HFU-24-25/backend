@@ -10,7 +10,7 @@ import (
 func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.WebSocketEvent) {
 	lib.Print(lib.UDP_SERVICE, "Starting UDP server")
 	addr := net.UDPAddr{
-		Port: int(lib.UDP_PORT),
+		Port: lib.UDP_PORT,
 		IP:   net.ParseIP(lib.UDP_ADDR),
 	}
 	conn, err := net.ListenUDP("udp", &addr)

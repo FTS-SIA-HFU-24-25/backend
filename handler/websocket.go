@@ -16,9 +16,4 @@ func HandleWebsocketEvent(c *websocket.Conn, mt int, message []byte, outputChan 
 		lib.Print(lib.WEBSOCKET_SERVICE, err)
 		return
 	}
-
-	switch requestData.Event {
-	case 0: // message
-
-	}
 }

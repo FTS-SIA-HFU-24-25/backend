@@ -7,11 +7,11 @@ import (
 
 /*
 Rules for translating UDP server:
-1. The first bit, is the data type
+1. The first byte, is the data type
 - 0: ecg-sensor
 - 1: temperature-sensor
 - 2: gps-service
-2. The second bit, is the data
+2. After the second byte, is the data
 */
 func TranslateUDPBinary(data []byte) (int, interface{}) {
 	dataType := int(data[0])
