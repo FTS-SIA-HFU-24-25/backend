@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sia/backend/handler"
 	"sia/backend/lib"
+	"sia/backend/test"
 	"sia/backend/types"
 
 	"github.com/gorilla/websocket"
@@ -25,10 +26,11 @@ func ListenToWebSocket(w http.ResponseWriter, r *http.Request, iotChan chan<- ty
 	}
 	defer c.Close()
 
+	go test.RunTestUDPClient("test/sample-signal-100hz.txt", int(100))
+
 	// Write messages to WebSocket from wsChan
 	go func() {
 		for data := range wsChan {
-			lib.Print(lib.WEBSOCKET_SERVICE, "Sending data:", data)
 			if err := c.WriteJSON(data); err != nil {
 				lib.Print(lib.WEBSOCKET_SERVICE, "WriteJSON error:", err)
 				break

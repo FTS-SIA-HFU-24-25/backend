@@ -5,10 +5,15 @@ import (
 	"sia/backend/handler"
 	"sia/backend/lib"
 	"sia/backend/types"
+
+	"github.com/eripe970/go-dsp-utils"
 )
 
-func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.WebSocketEvent) {
+var ecg map[string][]float64
+
+func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.WebSocketEvent, ecgChan chan dsp.Signal) {
 	lib.Print(lib.UDP_SERVICE, "Starting UDP server")
+	ecg = make(map[string][]float64)
 	addr := net.UDPAddr{
 		Port: lib.UDP_PORT,
 		IP:   net.ParseIP(lib.UDP_ADDR),
@@ -29,10 +34,24 @@ func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.Web
 
 	for {
 		buffer := make([]byte, 1024)
-		n, addr, err := conn.ReadFromUDP(buffer)
+		_, addr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			panic(err)
 		}
-		go handler.HandleUDPRequest(buffer, n, addr, websocketChan)
+		go handler.HandleUDPRequest(buffer, addr.String(), ecg, websocketChan, ecgChan)
+
+		select {
+		case s := <-ecgChan:
+			lib.Print(lib.UDP_SERVICE, s)
+		default:
+			newSignal := dsp.Signal{
+				SampleRate: 100,
+				Signal:     make([]float64, 0),
+			}
+
+			go (func() {
+				ecgChan <- newSignal
+			})()
+		}
 	}
 }

@@ -1,13 +1,16 @@
 package test
 
 import (
+	"bufio"
 	"log"
-	"math/rand"
 	"net"
+	"os"
 	"sia/backend/lib"
+	"strconv"
 	"time"
 )
 
+// sendData sends data over the UDP connection with a specific dataType.
 func sendData(conn *net.UDPConn, dataType int, data []byte) {
 	packet := append([]byte{byte(dataType)}, data...)
 	_, err := conn.Write(packet)
@@ -16,8 +19,10 @@ func sendData(conn *net.UDPConn, dataType int, data []byte) {
 	}
 }
 
-func RunTestUDPClient() {
+// RunTestUDPClient reads data from a file line by line and sends it over UDP at a specified frequency.
+func RunTestUDPClient(filePath string, frequencyHz int) {
 	lib.Print(lib.UDP_SERVICE, "Starting UDP client")
+
 	serverAddr := net.UDPAddr{
 		Port: int(lib.UDP_PORT),
 		IP:   net.ParseIP(lib.UDP_ADDR),
@@ -25,34 +30,39 @@ func RunTestUDPClient() {
 	conn, err := net.DialUDP("udp", nil, &serverAddr)
 	if err != nil {
 		lib.Print(lib.UDP_SERVICE, "Failed to connect to server")
+		return
 	}
 	defer conn.Close()
 
-	for {
-		// dataType := rand.Intn(3)
-		data := byte(rand.Intn(256))
-		sendData(conn, 0, []byte{data})
-		lib.Print(lib.UDP_SERVICE, "Sent EKG sensor data")
-		// switch dataType {
-		// case types.UDP_EKG_SENSOR:
-		// 	data := byte(rand.Intn(256))
-		// 	sendData(conn, dataType, []byte{data})
-		// 	lib.Print(lib.UDP_SERVICE, "Sent EKG sensor data")
-		//
-		// case types.UDP_TEMPERATURE_SENSOR:
-		// 	temp := rand.Float64()*100 - 50 // Temperature range -50 to +50
-		// 	sendData(conn, dataType, lib.Float64ToBytes(temp))
-		// 	lib.Print(lib.UDP_SERVICE, "Sent temperature sensor data")
-		//
-		// case types.UDP_GPS_SERVICE:
-		// 	latitude := rand.Float64()*180 - 90   // Latitude range -90 to +90
-		// 	longitude := rand.Float64()*360 - 180 // Longitude range -180 to +180
-		// 	data := append(lib.Float64ToBytes(latitude), lib.Float64ToBytes(longitude)...)
-		// 	sendData(conn, dataType, data)
-		// 	lib.Print(lib.UDP_SERVICE, "Sent GPS data")
-		// default:
-		// 	lib.Print(lib.UDP_SERVICE, "Invalid data type")
-		// }
-		time.Sleep(1 * time.Second)
+	// Calculate the interval between sends based on the frequency
+	interval := time.Second / time.Duration(frequencyHz)
+
+	// Open the file for streaming
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		// Read each line as data
+		line := scanner.Text()
+		value, err := strconv.Atoi(line)
+		if err != nil {
+			log.Printf("Failed to convert line to integer: %v", err)
+			continue
+		}
+
+		// Send data
+		sendData(conn, 0, []byte{byte(value)})
+		// lib.Print(lib.UDP_SERVICE, "Sent EKG sensor data:", value)
+
+		// Wait for the next interval
+		time.Sleep(interval)
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatalf("Error reading file: %v", err)
 	}
 }
