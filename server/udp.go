@@ -45,7 +45,7 @@ func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.Web
 			lib.Print(lib.UDP_SERVICE, s)
 		default:
 			newSignal := dsp.Signal{
-				SampleRate: 100,
+				SampleRate: float64(lib.ECG_HZ),
 				Signal:     make([]float64, 0),
 			}
 

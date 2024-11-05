@@ -9,10 +9,6 @@ import (
 	"github.com/eripe970/go-dsp-utils"
 )
 
-const (
-	EcgHZ float64 = 100
-)
-
 func main() {
 	lib.InitEnvVars()
 

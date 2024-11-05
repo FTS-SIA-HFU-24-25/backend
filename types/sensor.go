@@ -11,7 +11,7 @@ const (
 
 type (
 	EKG_SENSOR struct {
-		Value     int       `json:"value"`
+		Value     float64   `json:"value"`
 		Timestamp time.Time `json:"timestamp"`
 	}
 	TEMPERATURE_SENSOR struct {
@@ -25,7 +25,7 @@ type (
 	}
 )
 
-func (s *EKG_SENSOR) Init(value int) *EKG_SENSOR {
+func (s *EKG_SENSOR) Init(value float64) *EKG_SENSOR {
 	s.Value = value
 	s.Timestamp = time.Now()
 	return s

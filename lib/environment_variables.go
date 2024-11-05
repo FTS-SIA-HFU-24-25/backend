@@ -18,6 +18,9 @@ var (
 
 	// Websocket
 	WEBSOCKET_PATH string
+
+	// ECG HZ
+	ECG_HZ int
 )
 
 func InitEnvVars() {
@@ -27,9 +30,16 @@ func InitEnvVars() {
 	}
 	UDP_ADDR = LoadEnvVar("UDP_ADDR")
 	UDP_PORT, err = strconv.Atoi(LoadEnvVar("UDP_PORT"))
+	if err != nil {
+		panic(err)
+	}
 	TCP_ADDR = LoadEnvVar("TCP_ADDR")
 	TCP_PORT, err = strconv.Atoi(LoadEnvVar("TCP_PORT"))
+	if err != nil {
+		panic(err)
+	}
 	WEBSOCKET_PATH = LoadEnvVar("WEBSOCKET_PATH")
+	ECG_HZ, err = strconv.Atoi(LoadEnvVar("ECG_HZ"))
 	if err != nil {
 		panic(err)
 	}
