@@ -1,12 +1,11 @@
 package main
 
 import (
+	"sia/backend/cache"
 	"sia/backend/handler"
 	"sia/backend/lib"
 	"sia/backend/server"
 	"sia/backend/types"
-
-	"github.com/eripe970/go-dsp-utils"
 )
 
 func main() {
@@ -14,9 +13,11 @@ func main() {
 
 	websocketEventChannel := make(chan types.WebSocketEvent)
 	iotEventChannel := make(chan types.IoTEvent)
-	ecgChannel := make(chan dsp.Signal)
+	ecgChannel := make(chan types.EcgSignal)
 
-	go server.InitUDPServer(iotEventChannel, websocketEventChannel, ecgChannel)
+	cache := cache.CreateNewCache()
+
+	go server.InitUDPServer(cache, iotEventChannel, websocketEventChannel, ecgChannel)
 	go server.InitTCPServer(iotEventChannel, websocketEventChannel)
 	go handler.InitECGHandler(ecgChannel, websocketEventChannel)
 

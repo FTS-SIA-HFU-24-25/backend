@@ -7,6 +7,7 @@ const (
 	UDP_EKG_SENSOR         = 0
 	UDP_TEMPERATURE_SENSOR = 1
 	UDP_GPS_SERVICE        = 2
+	END_CONNECTION         = 3
 )
 
 type (
@@ -22,6 +23,9 @@ type (
 		Latitude  float64   `json:"latitude"`
 		Longitude float64   `json:"longitude"`
 		Timestamp time.Time `json:"timestamp"`
+	}
+	END_REQUEST struct {
+		SENSOR_ID int `json:"sensor_id"`
 	}
 )
 

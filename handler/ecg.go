@@ -10,11 +10,6 @@ import (
 )
 
 type (
-	HeartBeat struct {
-		Count     int       `json:"count"`
-		Avg       int       `json:"avg"`
-		Timestamp time.Time `json:"timestamp"`
-	}
 	EcgWSEvent struct {
 		Signals   []float64 `json:"signals"`
 		Avg       int       `json:"avg"`
@@ -25,17 +20,15 @@ type (
 	}
 )
 
-func InitECGHandler(ecgChan <-chan dsp.Signal, wsChan chan<- types.WebSocketEvent) {
+func InitECGHandler(ecgChan <-chan types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 	for c := range ecgChan {
-		if c.Length() > int(c.SampleRate)*2 && c.Length()%(int(c.SampleRate)/10) == 0 {
-			sendHeartBeatData(&c, wsChan)
-		}
+		sendHeartBeatData(&c, wsChan)
 	}
 }
 
-func sendHeartBeatData(c *dsp.Signal, wsChan chan<- types.WebSocketEvent) {
+func sendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 	lib.Print(lib.ECG_SERVICE, c.SampleRate, c.Signal)
-	length := int(c.SampleRate) / 10
+	length := int(c.SampleRate) / c.ChunksSize
 
 	data, err := c.Normalize()
 	if err != nil {
@@ -52,7 +45,7 @@ func sendHeartBeatData(c *dsp.Signal, wsChan chan<- types.WebSocketEvent) {
 	//data, _ = c.HighPassFilter(maxV * 2)
 	// data, _ = c.BandPassFilter(0.5, 5)
 
-	rPeak := dsp.GetRPeaks(c)
+	rPeak := dsp.GetRPeaks(&c.Signal)
 
 	wsChan <- types.WebSocketEvent{
 		Event: "ekg-changes",
@@ -76,19 +69,6 @@ func calculateSpectrumPeakFreq(d []float64, maxV float64) float64 {
 	maxVal := slices.Max(searchData)
 
 	return maxVal
-}
-
-func updateHeartBeat(s *dsp.Signal, wsChan chan<- types.WebSocketEvent) {
-	rPeak := dsp.GetRPeaks(s)
-	events := types.WebSocketEvent{
-		Event: "heartbeat",
-		Data: &HeartBeat{
-			Count:     rPeak.Count(),
-			Avg:       rPeak.Avg(),
-			Timestamp: time.Now(),
-		},
-	}
-	wsChan <- events
 }
 
 func getLastSeconds(s *dsp.Signal, dur time.Duration) *dsp.Signal {

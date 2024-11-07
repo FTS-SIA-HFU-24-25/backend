@@ -1,19 +1,26 @@
 package server
 
 import (
+	"encoding/json"
 	"net"
+	"sia/backend/cache"
 	"sia/backend/handler"
 	"sia/backend/lib"
 	"sia/backend/types"
-
-	"github.com/eripe970/go-dsp-utils"
 )
 
 var ecg map[string][]float64
 
-func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.WebSocketEvent, ecgChan chan dsp.Signal) {
+func InitUDPServer(cache *cache.Cache, iotChan <-chan types.IoTEvent, websocketChan chan<- types.WebSocketEvent, ecgChan chan types.EcgSignal) {
 	lib.Print(lib.UDP_SERVICE, "Starting UDP server")
 	ecg = make(map[string][]float64)
+	conf := types.WebSocketConfigResponse{
+		ChunksSize:       10,
+		StartReceiveData: 0,
+		FilterType:       0,
+		MaxPass:          0,
+		MinPass:          0,
+	}
 	addr := net.UDPAddr{
 		Port: lib.UDP_PORT,
 		IP:   net.ParseIP(lib.UDP_ADDR),
@@ -26,6 +33,15 @@ func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.Web
 
 	go (func() {
 		for data := range iotChan {
+			if data.Type == 255 {
+				var wsConfMsg types.WebSocketConfigResponse
+				err := json.Unmarshal(data.Data, &wsConfMsg)
+				if err != nil {
+					continue
+				}
+				conf = wsConfMsg
+				continue
+			}
 			response := []byte{byte(data.Type)}
 			response = append(response, data.Data...)
 			conn.WriteToUDP(response, &addr)
@@ -34,24 +50,11 @@ func InitUDPServer(iotChan <-chan types.IoTEvent, websocketChan chan<- types.Web
 
 	for {
 		buffer := make([]byte, 1024)
-		_, addr, err := conn.ReadFromUDP(buffer)
+		_, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			panic(err)
+			lib.Print(lib.UDP_SERVICE, err)
+			continue
 		}
-		go handler.HandleUDPRequest(buffer, addr.String(), ecg, websocketChan, ecgChan)
-
-		select {
-		case s := <-ecgChan:
-			lib.Print(lib.UDP_SERVICE, s)
-		default:
-			newSignal := dsp.Signal{
-				SampleRate: float64(lib.ECG_HZ),
-				Signal:     make([]float64, 0),
-			}
-
-			go (func() {
-				ecgChan <- newSignal
-			})()
-		}
+		go handler.HandleUDPRequest(buffer, cache, conf, websocketChan, ecgChan)
 	}
 }
