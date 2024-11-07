@@ -12,7 +12,6 @@ import (
 var ecg map[string][]float64
 
 func InitUDPServer(cache *cache.Cache, iotChan <-chan types.IoTEvent, websocketChan chan<- types.WebSocketEvent, ecgChan chan types.EcgSignal) {
-	lib.Print(lib.UDP_SERVICE, "Starting UDP server")
 	ecg = make(map[string][]float64)
 	conf := types.WebSocketConfigResponse{
 		ChunksSize:       10,
@@ -30,6 +29,8 @@ func InitUDPServer(cache *cache.Cache, iotChan <-chan types.IoTEvent, websocketC
 		panic(err)
 	}
 	defer conn.Close()
+
+	lib.Print(lib.UDP_SERVICE, "Starting UDP server: ", addr.String())
 
 	go (func() {
 		for data := range iotChan {
