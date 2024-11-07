@@ -28,7 +28,6 @@ func ListenToWebSocket(w http.ResponseWriter, r *http.Request, iotChan chan<- ty
 	// Write messages to WebSocket from wsChan
 	go func() {
 		for data := range wsChan {
-			lib.Print(lib.WEBSOCKET_SERVICE, "Sending data:", data)
 			if err := c.WriteJSON(data); err != nil {
 				lib.Print(lib.WEBSOCKET_SERVICE, "WriteJSON error:", err)
 				break

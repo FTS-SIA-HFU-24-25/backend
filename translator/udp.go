@@ -17,7 +17,7 @@ func TranslateUDPBinary(data []byte) (int, interface{}) {
 	dataType := int(data[0])
 	switch dataType {
 	case types.UDP_EKG_SENSOR:
-		data := int(data[1])
+		data := lib.Float64FromBytes(data[1:])
 		result := new(types.EKG_SENSOR).Init(data)
 		return dataType, result
 

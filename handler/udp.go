@@ -2,14 +2,14 @@ package handler
 
 import (
 	"fmt"
-	"net"
 	"sia/backend/lib"
 	"sia/backend/translator"
 	"sia/backend/types"
+
+	"github.com/eripe970/go-dsp-utils"
 )
 
-func HandleUDPRequest(buffer []byte, n int, addr *net.UDPAddr, outputChan chan<- types.WebSocketEvent) {
-	lib.Print(lib.UDP_SERVICE, fmt.Sprintf("Received %v bytes from %v\n", n, addr))
+func HandleUDPRequest(buffer []byte, addr string, m map[string][]float64, outputChan chan<- types.WebSocketEvent, ecgChan chan<- dsp.Signal) {
 	dataType, data := translator.TranslateUDPBinary(buffer)
 	output := types.WebSocketEvent{
 		Event: "",
@@ -18,9 +18,8 @@ func HandleUDPRequest(buffer []byte, n int, addr *net.UDPAddr, outputChan chan<-
 	switch dataType {
 	case types.UDP_EKG_SENSOR:
 		ekg := data.(*types.EKG_SENSOR)
-		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("EKG sensor data: %v\n", ekg.Value))
-		output.Event = "ekg-changes"
-		output.Data = ekg
+		// lib.Print(lib.UDP_SERVICE, fmt.Sprintf("EKG sensor data: %v\n", ekg.Value))
+		go updateEcgChannel(ekg.Value, m, addr, ecgChan)
 	case types.UDP_TEMPERATURE_SENSOR:
 		temp := data.(*types.TEMPERATURE_SENSOR)
 		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("Temperature sensor data: %v\n", temp.Value))
@@ -36,7 +35,26 @@ func HandleUDPRequest(buffer []byte, n int, addr *net.UDPAddr, outputChan chan<-
 	default:
 		lib.Print(lib.UDP_SERVICE, "Invalid data type")
 	}
-	if output.Event != "" && output.Data != nil {
-		outputChan <- output
+	// if output.Event != "" && output.Data != nil {
+	// 	outputChan <- output
+	// }
+}
+
+func updateEcgChannel(n float64, m map[string][]float64, addr string, c chan<- dsp.Signal) {
+	v, f := m[addr]
+	if !f {
+		lib.Print(lib.UDP_SERVICE, "Not found!")
+		m[addr] = make([]float64, 0)
+	}
+
+	newArr := append(v, n)
+	if len(newArr) > 10000 {
+		newArr = newArr[1:]
+	}
+	m[addr] = newArr
+
+	c <- dsp.Signal{
+		SampleRate: float64(lib.ECG_HZ),
+		Signal:     newArr,
 	}
 }
