@@ -7,6 +7,7 @@ const (
 	TCP_SERVICE
 	WEBSOCKET_SERVICE
 	ECG_SERVICE
+	CACHE_SERVICE
 )
 
 func Print(s int, val ...interface{}) {
@@ -19,5 +20,7 @@ func Print(s int, val ...interface{}) {
 		fmt.Printf("[WS] %v \n", val)
 	case ECG_SERVICE:
 		fmt.Printf("[ECG] %v \n", val)
+	case CACHE_SERVICE:
+		fmt.Printf("[CAC] %v \n", val)
 	}
 }

@@ -31,7 +31,11 @@ func TranslateUDPBinary(data []byte) (int, interface{}) {
 		longitude := lib.Float64FromBytes(data[9:])
 		result := new(types.GPS_SERVICE).Init(latitude, longitude)
 		return dataType, result
-
+	case types.END_CONNECTION:
+		result := types.END_REQUEST{
+			SENSOR_ID: int(data[1]),
+		}
+		return dataType, &result
 	default:
 		return -1, nil
 	}
