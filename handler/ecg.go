@@ -11,12 +11,12 @@ import (
 
 type (
 	EcgWSEvent struct {
-		Signals   []float64 `json:"signals"`
-		Avg       int       `json:"avg"`
-		Max       float64   `json:"max"`
-		Min       float64   `json:"min"`
-		Frequency int       `json:"frequency"`
-		Timestamp time.Time `json:"timestamp"`
+		Signals []float64 `json:"signals"`
+		Avg     int       `json:"avg"`
+	}
+	SpectrumWSEvent struct {
+		Spectrum  []float64 `json:"spectrum"`
+		Frequency []float64 `json:"frequency"`
 	}
 )
 
@@ -35,11 +35,16 @@ func sendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 		return
 	}
 
-	spectrum, _ := data.FrequencySpectrum()
-	maxV := spectrum.Max()
-	// minV := spectrum.Min()
-	if maxV == 0 {
-		return
+	if len(data.Signal)%int(data.SampleRate*10) == 0 {
+		newData := getLastSeconds(data, time.Second*8)
+		spectrum, _ := newData.FrequencySpectrum()
+		wsChan <- types.WebSocketEvent{
+			Event: "spectrum-changes",
+			Data: SpectrumWSEvent{
+				Spectrum:  spectrum.Spectrum,
+				Frequency: spectrum.Frequencies,
+			},
+		}
 	}
 
 	//data, _ = c.HighPassFilter(maxV * 2)
@@ -50,12 +55,8 @@ func sendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 	wsChan <- types.WebSocketEvent{
 		Event: "ekg-changes",
 		Data: EcgWSEvent{
-			Signals:   data.Signal[len(data.Signal)-length:],
-			Avg:       rPeak.Avg(),
-			Max:       maxV * 2,
-			Min:       maxV * -2,
-			Frequency: int(data.SampleRate),
-			Timestamp: time.Now(),
+			Signals: data.Signal[len(data.Signal)-length:],
+			Avg:     rPeak.Avg(),
 		},
 	}
 }
@@ -72,13 +73,10 @@ func calculateSpectrumPeakFreq(d []float64, maxV float64) float64 {
 }
 
 func getLastSeconds(s *dsp.Signal, dur time.Duration) *dsp.Signal {
-	sample := make([]float64, 0)
-	for i := s.Length() - int(s.SampleRate*dur.Seconds()); i < s.Length(); i++ {
-		sample = append(sample, s.Signal[i])
+	length := int(s.SampleRate * dur.Seconds())
+	if length >= len(s.Signal) {
+		return s
 	}
-
-	return &dsp.Signal{
-		SampleRate: s.SampleRate,
-		Signal:     sample,
-	}
+	s.Signal = s.Signal[len(s.Signal)-length:]
+	return s
 }

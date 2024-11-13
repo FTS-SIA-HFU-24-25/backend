@@ -55,6 +55,9 @@ func (c *Cache) AddIndexToEcg(ctx context.Context, index float64) (*[]float64, e
 	}
 
 	newArr := append(*arr, index)
+	if len(newArr) > lib.ECG_HZ*60*7 {
+		newArr = newArr[1:]
+	}
 	err = c.Set(ctx, c.keyPrefix, newArr)
 	if err != nil {
 		return nil, err
@@ -84,6 +87,11 @@ func (c *Cache) GetLength(ctx context.Context) (int, error) {
 
 func (c *Cache) ClearValues(ctx context.Context) error {
 	err := c.Delete(ctx, c.keyPrefix)
+	if err != nil {
+		return err
+	}
+
+	err = c.Set(context.Background(), c.keyPrefix, make([]float64, 0))
 	if err != nil {
 		return err
 	}

@@ -36,6 +36,7 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf types.WebSocketCon
 		output.Data = gps
 	case types.END_CONNECTION:
 		lib.Print(lib.CACHE_SERVICE, "Values cleared")
+		cache.ClearValues(context.Background())
 	default:
 		lib.Print(lib.UDP_SERVICE, "Invalid data type")
 	}
