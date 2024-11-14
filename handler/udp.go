@@ -65,5 +65,8 @@ func updateEcgChannel(n float64, cache *cache.Cache, conf types.WebSocketConfigR
 			Signal:     *arr,
 		},
 		ChunksSize: conf.ChunksSize,
+		MinPass:    conf.MinPass,
+		MaxPass:    conf.MaxPass,
+		FilterType: conf.FilterType,
 	}
 }

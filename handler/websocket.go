@@ -18,7 +18,7 @@ type ping struct {
 	Data  int `json:"data"`
 }
 
-func HandleWebsocketEvent(c *websocket.Conn, mt int, message []byte, outputChan chan<- types.IoTEvent) {
+func HandleWebsocketEvent(c *websocket.Conn, mt int, message []byte) {
 	var requestData ping
 
 	err := json.Unmarshal(message, &requestData)

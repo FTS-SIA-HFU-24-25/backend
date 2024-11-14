@@ -9,11 +9,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func InitTCPServer(iotChan chan<- types.IoTEvent, wsChan <-chan types.WebSocketEvent) {
+func InitTCPServer(wsChan <-chan types.WebSocketEvent) {
 	lib.Print(lib.TCP_SERVICE, "Starting TCP Server")
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ListenToWebSocket(w, r, iotChan, wsChan) // Corrected order of parameters
+		ListenToWebSocket(w, r, wsChan) // Corrected order of parameters
 	})
 
 	r.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {

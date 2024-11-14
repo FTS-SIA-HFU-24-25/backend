@@ -47,8 +47,19 @@ func sendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 		}
 	}
 
-	//data, _ = c.HighPassFilter(maxV * 2)
-	// data, _ = c.BandPassFilter(0.5, 5)
+	if c.FilterType != 0 {
+		switch c.FilterType {
+		case 1:
+			data, err = c.LowPassFilter(c.MaxPass)
+		case 2:
+			data, err = c.HighPassFilter(c.MinPass)
+		case 3:
+			data, err = c.BandPassFilter(c.MinPass, c.MaxPass)
+		}
+		if err != nil {
+			return
+		}
+	}
 
 	rPeak := dsp.GetRPeaks(&c.Signal)
 

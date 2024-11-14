@@ -12,13 +12,12 @@ func main() {
 	lib.InitEnvVars()
 
 	websocketEventChannel := make(chan types.WebSocketEvent)
-	iotEventChannel := make(chan types.IoTEvent)
 	ecgChannel := make(chan types.EcgSignal)
 
 	cache := cache.CreateNewCache()
 
-	go server.InitUDPServer(cache, iotEventChannel, websocketEventChannel, ecgChannel)
-	go server.InitTCPServer(iotEventChannel, websocketEventChannel)
+	go server.InitUDPServer(cache, websocketEventChannel, ecgChannel)
+	go server.InitTCPServer(websocketEventChannel)
 	go handler.InitECGHandler(ecgChannel, websocketEventChannel)
 
 	select {}

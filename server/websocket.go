@@ -16,7 +16,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func ListenToWebSocket(w http.ResponseWriter, r *http.Request, iotChan chan<- types.IoTEvent, wsChan <-chan types.WebSocketEvent) {
+func ListenToWebSocket(w http.ResponseWriter, r *http.Request, wsChan <-chan types.WebSocketEvent) {
 	lib.Print(lib.WEBSOCKET_SERVICE, "Starting websocket server")
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -43,6 +43,6 @@ func ListenToWebSocket(w http.ResponseWriter, r *http.Request, iotChan chan<- ty
 			break
 		}
 		// Pass the message to the handler
-		go handler.HandleWebsocketEvent(c, mt, message, iotChan)
+		handler.HandleWebsocketEvent(c, mt, message)
 	}
 }
