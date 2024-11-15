@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"sia/backend/lib"
+	"sia/backend/types"
 	"sync"
 
 	"github.com/dgraph-io/ristretto"
@@ -14,10 +15,14 @@ type Cache struct {
 	*cache.Cache[[]float64]
 	keyPrefix string
 	mu        sync.Mutex
-	chunkSize int
 }
 
-func CreateNewCache() *Cache {
+type Config struct {
+	*cache.Cache[types.WebSocketConfigResponse]
+	ChunkSize int
+}
+
+func CreateNewCache() (*Cache, *Config) {
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10000,
 		MaxCost:     1000000,
@@ -29,20 +34,34 @@ func CreateNewCache() *Cache {
 	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 
 	cacheManager := cache.New[[]float64](ristrettoStore)
+	configManager := cache.New[types.WebSocketConfigResponse](ristrettoStore)
 
 	c := &Cache{
 		Cache:     cacheManager,
 		keyPrefix: "ecg",
-		chunkSize: 10,
 	}
+
+	cf := &Config{
+		Cache:     configManager,
+		ChunkSize: 10,
+	}
+
 	err = c.Set(context.Background(), c.keyPrefix, make([]float64, 0))
 	if err != nil {
 		panic(err)
 	}
 
+	err = cf.Set(context.Background(), "config", types.WebSocketConfigResponse{
+		ChunksSize:       10,
+		StartReceiveData: 0,
+		FilterType:       0,
+		MaxPass:          0,
+		MinPass:          0,
+	})
+
 	lib.Print(lib.CACHE_SERVICE, "Cache Manager created")
 
-	return c
+	return c, cf
 }
 
 func (c *Cache) AddIndexToEcg(ctx context.Context, index float64) (*[]float64, error) {
@@ -95,6 +114,31 @@ func (c *Cache) ClearValues(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (c *Config) GetConfig(ctx context.Context) (*types.WebSocketConfigResponse, error) {
+	config, err := c.Get(ctx, "config")
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func (c *Config) UpdateConfig(ctx context.Context, newConfig types.WebSocketConfigResponse) error {
+	config, err := c.GetConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = c.Set(ctx, "config", *config)
+	if err != nil {
+		return err
+	}
+
+	c.ChunkSize = newConfig.ChunksSize
 
 	return nil
 }

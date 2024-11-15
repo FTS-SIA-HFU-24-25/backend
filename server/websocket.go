@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"sia/backend/cache"
 	"sia/backend/handler"
 	"sia/backend/lib"
 	"sia/backend/types"
@@ -16,7 +17,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func ListenToWebSocket(w http.ResponseWriter, r *http.Request, wsChan <-chan types.WebSocketEvent) {
+func ListenToWebSocket(w http.ResponseWriter, r *http.Request, config *cache.Config, wsChan <-chan types.WebSocketEvent) {
 	lib.Print(lib.WEBSOCKET_SERVICE, "Starting websocket server")
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -43,6 +44,6 @@ func ListenToWebSocket(w http.ResponseWriter, r *http.Request, wsChan <-chan typ
 			break
 		}
 		// Pass the message to the handler
-		handler.HandleWebsocketEvent(c, mt, message)
+		handler.HandleWebsocketEvent(c, mt, message, config)
 	}
 }

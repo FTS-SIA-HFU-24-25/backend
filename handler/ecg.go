@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"sia/backend/lib"
 	"sia/backend/types"
-	"slices"
 	"time"
 
 	"github.com/eripe970/go-dsp-utils"
@@ -20,14 +18,7 @@ type (
 	}
 )
 
-func InitECGHandler(ecgChan <-chan types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
-	for c := range ecgChan {
-		sendHeartBeatData(&c, wsChan)
-	}
-}
-
-func sendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
-	lib.Print(lib.ECG_SERVICE, c.SampleRate, c.Signal)
+func SendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 	length := int(c.SampleRate) / c.ChunksSize
 
 	data, err := c.Normalize()
@@ -70,17 +61,6 @@ func sendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 			Avg:     rPeak.Avg(),
 		},
 	}
-}
-
-func calculateSpectrumPeakFreq(d []float64, maxV float64) float64 {
-	lib.Print(lib.ECG_SERVICE, len(d), int(maxV))
-	seq := float64(len(d)) / maxV
-
-	searchData := d[int(seq)*2:]
-
-	maxVal := slices.Max(searchData)
-
-	return maxVal
 }
 
 func getLastSeconds(s *dsp.Signal, dur time.Duration) *dsp.Signal {
