@@ -128,12 +128,7 @@ func (c *Config) GetConfig(ctx context.Context) (*types.WebSocketConfigResponse,
 }
 
 func (c *Config) UpdateConfig(ctx context.Context, newConfig types.WebSocketConfigResponse) error {
-	config, err := c.GetConfig(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = c.Set(ctx, "config", *config)
+	err := c.Set(ctx, "config", newConfig)
 	if err != nil {
 		return err
 	}

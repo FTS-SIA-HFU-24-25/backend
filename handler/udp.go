@@ -62,14 +62,29 @@ func updateEcgChannel(n float64, cache *cache.Cache, config *cache.Config, c cha
 	if length%config.ChunkSize > 0 {
 		return
 	}
+	if length < config.ChunkSize*2 {
+		return
+	}
 
 	if conf.SpectrumUpdateRequest == 1 {
 		newConf := *conf
 		newConf.SpectrumUpdateRequest = 0
+		UpdateSpectrum(&types.EcgSignal{
+			Signal: dsp.Signal{
+				SampleRate: float64(lib.ECG_HZ),
+				Signal:     *arr,
+			},
+			ChunksSize:         conf.ChunksSize,
+			MinPass:            conf.MinPass,
+			MaxPass:            conf.MaxPass,
+			FilterType:         conf.FilterType,
+			WaitSpectrumUpdate: conf.SpectrumUpdateRequest,
+		}, c)
 		err = config.Set(context.Background(), "config", newConf)
 		if err != nil {
 			return
 		}
+		return
 	}
 
 	SendHeartBeatData(&types.EcgSignal{

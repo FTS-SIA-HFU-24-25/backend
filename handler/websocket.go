@@ -50,6 +50,11 @@ func HandleWebsocketEvent(c *websocket.Conn, mt int, message []byte, config *cac
 			lib.Print(lib.WEBSOCKET_SERVICE, err)
 			return
 		}
+		err = config.UpdateConfig(context.Background(), conf)
+		if err != nil {
+			lib.Print(lib.WEBSOCKET_SERVICE, err)
+			return
+		}
 	case types.START_ECG:
 		conf, err := config.GetConfig(context.Background())
 		if err != nil {

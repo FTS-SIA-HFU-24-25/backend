@@ -19,8 +19,6 @@ type (
 )
 
 func SendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
-	length := int(c.SampleRate) / c.ChunksSize
-
 	data, err := c.Normalize()
 	if err != nil {
 		return
@@ -57,8 +55,24 @@ func SendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 	wsChan <- types.WebSocketEvent{
 		Event: "ekg-changes",
 		Data: EcgWSEvent{
-			Signals: data.Signal[len(data.Signal)-length:],
+			Signals: data.Signal[len(data.Signal)-c.ChunksSize:],
 			Avg:     rPeak.Avg(),
+		},
+	}
+}
+
+func UpdateSpectrum(s *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
+	data, err := s.Normalize()
+	if err != nil {
+		return
+	}
+	newData := getLastSeconds(data, time.Second*8)
+	spectrum, _ := newData.FrequencySpectrum()
+	wsChan <- types.WebSocketEvent{
+		Event: "spectrum-changes",
+		Data: SpectrumWSEvent{
+			Spectrum:  spectrum.Spectrum,
+			Frequency: spectrum.Frequencies,
 		},
 	}
 }
