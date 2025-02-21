@@ -11,7 +11,7 @@ import (
 	"github.com/eripe970/go-dsp-utils"
 )
 
-func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf types.WebSocketConfigResponse, outputChan chan<- types.WebSocketEvent, ecgChan chan<- types.EcgSignal) {
+func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, outputChan chan<- types.WebSocketEvent) {
 	dataType, data := translator.TranslateUDPBinary(buffer)
 	output := types.WebSocketEvent{
 		Event: "",
@@ -21,7 +21,7 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf types.WebSocketCon
 	case types.UDP_EKG_SENSOR:
 		ekg := data.(*types.EKG_SENSOR)
 		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("EKG sensor data: %v\n", ekg.Value))
-		updateEcgChannel(ekg.Value, cache, conf, ecgChan)
+		updateEcgChannel(ekg.Value, cache, conf, outputChan)
 	case types.UDP_TEMPERATURE_SENSOR:
 		temp := data.(*types.TEMPERATURE_SENSOR)
 		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("Temperature sensor data: %v\n", temp.Value))
@@ -36,15 +36,18 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf types.WebSocketCon
 		output.Data = gps
 	case types.END_CONNECTION:
 		lib.Print(lib.CACHE_SERVICE, "Values cleared")
+		cache.ClearValues(context.Background())
 	default:
 		lib.Print(lib.UDP_SERVICE, "Invalid data type")
 	}
-	// if output.Event != "" && output.Data != nil {
-	// 	outputChan <- output
-	// }
 }
 
-func updateEcgChannel(n float64, cache *cache.Cache, conf types.WebSocketConfigResponse, c chan<- types.EcgSignal) {
+func updateEcgChannel(n float64, cache *cache.Cache, config *cache.Config, c chan<- types.WebSocketEvent) {
+	conf, err := config.GetConfig(context.Background())
+	if err != nil {
+		return
+	}
+
 	arr, err := cache.AddIndexToEcg(context.TODO(), n)
 	if err != nil {
 		lib.Print(lib.UDP_SERVICE, err)
@@ -52,17 +55,43 @@ func updateEcgChannel(n float64, cache *cache.Cache, conf types.WebSocketConfigR
 	}
 	length := len(*arr)
 
-	lib.Print(lib.UDP_SERVICE, arr, length)
-
-	if length%conf.ChunksSize > 0 {
+	if length%config.ChunkSize > 0 {
+		return
+	}
+	if length < config.ChunkSize*2 {
 		return
 	}
 
-	c <- types.EcgSignal{
+	if conf.SpectrumUpdateRequest == 1 {
+		newConf := *conf
+		newConf.SpectrumUpdateRequest = 0
+		UpdateSpectrum(&types.EcgSignal{
+			Signal: dsp.Signal{
+				SampleRate: float64(lib.ECG_HZ),
+				Signal:     *arr,
+			},
+			ChunksSize:         conf.ChunksSize,
+			MinPass:            conf.MinPass,
+			MaxPass:            conf.MaxPass,
+			FilterType:         conf.FilterType,
+			WaitSpectrumUpdate: conf.SpectrumUpdateRequest,
+		}, c)
+		err = config.Set(context.Background(), "config", newConf)
+		if err != nil {
+			return
+		}
+		return
+	}
+
+	SendHeartBeatData(&types.EcgSignal{
 		Signal: dsp.Signal{
 			SampleRate: float64(lib.ECG_HZ),
 			Signal:     *arr,
 		},
-		ChunksSize: conf.ChunksSize,
-	}
+		ChunksSize:         conf.ChunksSize,
+		MinPass:            conf.MinPass,
+		MaxPass:            conf.MaxPass,
+		FilterType:         conf.FilterType,
+		WaitSpectrumUpdate: conf.SpectrumUpdateRequest,
+	}, c)
 }
