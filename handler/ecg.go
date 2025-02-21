@@ -24,11 +24,16 @@ func SendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 		return
 	}
 
+	data, err = data.LowPassFilter(9)
+	if err != nil {
+		return
+	}
+
 	if len(data.Signal)%int(data.SampleRate*10) == 0 {
 		newData := getLastSeconds(data, time.Second*8)
 		spectrum, _ := newData.FrequencySpectrum()
 		wsChan <- types.WebSocketEvent{
-			Event: "spectrum-changes",
+			Event: "spectrum",
 			Data: SpectrumWSEvent{
 				Spectrum:  spectrum.Spectrum,
 				Frequency: spectrum.Frequencies,

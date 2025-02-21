@@ -48,10 +48,6 @@ func updateEcgChannel(n float64, cache *cache.Cache, config *cache.Config, c cha
 		return
 	}
 
-	if conf.StartReceiveData == 0 {
-		return
-	}
-
 	arr, err := cache.AddIndexToEcg(context.TODO(), n)
 	if err != nil {
 		lib.Print(lib.UDP_SERVICE, err)

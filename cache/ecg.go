@@ -43,7 +43,7 @@ func CreateNewCache() (*Cache, *Config) {
 
 	cf := &Config{
 		Cache:     configManager,
-		ChunkSize: 10,
+		ChunkSize: lib.CHUNK_SIZE,
 	}
 
 	err = c.Set(context.Background(), c.keyPrefix, make([]float64, 0))
@@ -51,8 +51,8 @@ func CreateNewCache() (*Cache, *Config) {
 		panic(err)
 	}
 
-	err = cf.Set(context.Background(), "config", types.WebSocketConfigResponse{
-		ChunksSize:       10,
+	_ = cf.Set(context.Background(), "config", types.WebSocketConfigResponse{
+		ChunksSize:       lib.CHUNK_SIZE,
 		StartReceiveData: 0,
 		FilterType:       0,
 		MaxPass:          0,

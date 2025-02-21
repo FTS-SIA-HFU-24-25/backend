@@ -21,6 +21,9 @@ var (
 
 	// ECG HZ
 	ECG_HZ int
+
+	// Default Chunk Size
+	CHUNK_SIZE int
 )
 
 func InitEnvVars() {
@@ -40,6 +43,10 @@ func InitEnvVars() {
 	}
 	WEBSOCKET_PATH = LoadEnvVar("WEBSOCKET_PATH")
 	ECG_HZ, err = strconv.Atoi(LoadEnvVar("ECG_HZ"))
+	if err != nil {
+		panic(err)
+	}
+	CHUNK_SIZE, err = strconv.Atoi(LoadEnvVar("CHUNK_SIZE"))
 	if err != nil {
 		panic(err)
 	}
