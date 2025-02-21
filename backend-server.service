@@ -1,0 +1,9 @@
+Description= instance to serve jobs api
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+ExecStart=/var/www/go/jobs
+[Install]
+WantedBy=multi-user.target
