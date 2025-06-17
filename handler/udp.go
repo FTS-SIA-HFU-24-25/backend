@@ -13,10 +13,7 @@ import (
 
 func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, outputChan chan<- types.WebSocketEvent) {
 	dataType, data := translator.TranslateUDPBinary(buffer)
-	output := types.WebSocketEvent{
-		Event: "",
-		Data:  nil,
-	}
+
 	switch dataType {
 	case types.UDP_EKG_SENSOR:
 		ekg := data.(*types.EKG_SENSOR)
@@ -25,15 +22,24 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, out
 	case types.UDP_TEMPERATURE_SENSOR:
 		temp := data.(*types.TEMPERATURE_SENSOR)
 		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("Temperature sensor data: %v\n", temp.Value))
-		output.Event = "temp-changes"
-		output.Data = temp
-	case types.UDP_GPS_SERVICE:
-		gps := data.(*types.GPS_SERVICE)
-		latitude := gps.Latitude
-		longitude := gps.Longitude
-		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("GPS data: %v, %v\n", latitude, longitude))
-		output.Event = "gps-changes"
-		output.Data = gps
+		outputChan <- types.WebSocketEvent{
+			Event: "temp",
+			Data: temp,
+		}
+	case types.UDP_GYRO_SENSOR:
+		gyro := data.(*types.GYRO_SENSOR)
+		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("Gyro sensor data: %v\n", gyro))
+		outputChan <- types.WebSocketEvent{
+			Event: "gyro",
+			Data: gyro,
+		}
+	case types.UDP_ACCEL_SENSOR:
+		accel := data.(*types.ACCEL_SENSOR)
+		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("Accel sensor data: %v\n", accel))
+		outputChan <- types.WebSocketEvent{
+			Event: "accel",
+			Data: accel,
+		}
 	case types.END_CONNECTION:
 		lib.Print(lib.CACHE_SERVICE, "Values cleared")
 		cache.ClearValues(context.Background())

@@ -31,7 +31,7 @@ func ListenToWebSocket(w http.ResponseWriter, r *http.Request, config *cache.Con
 		for data := range wsChan {
 			if err := c.WriteJSON(data); err != nil {
 				lib.Print(lib.WEBSOCKET_SERVICE, "WriteJSON error:", err)
-				break
+				continue	
 			}
 		}
 	}()
