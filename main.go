@@ -10,9 +10,12 @@ import (
 func main() {
 	lib.InitEnvVars()
 
-	websocketEventChannel := make(chan types.WebSocketEvent)
+	websocketEventChannel := make(chan types.WebSocketEvent, 1024)
 
-	cache, config := cache.CreateNewCache()
+	cache, config, err := cache.CreateNewCache()
+	if err != nil {
+		panic(err)
+	}
 
 	go server.InitUDPServer(cache, config, websocketEventChannel)
 	go server.InitTCPServer(config, websocketEventChannel)

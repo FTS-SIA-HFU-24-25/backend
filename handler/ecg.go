@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"context"
+	"log"
+	"sia/backend/cache"
+	"sia/backend/lib"
 	"sia/backend/types"
-	"time"
 
 	"github.com/eripe970/go-dsp-utils"
 )
@@ -18,75 +21,65 @@ type (
 	}
 )
 
-func SendHeartBeatData(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
+func updateEcgChannel(n float64, cache *cache.Cache, config *cache.Config, c chan<- types.WebSocketEvent) {
+	ctx := context.Background()
+	conf, err := config.GetConfig(ctx)
+	if err != nil {
+		log.Printf("[ERROR] Failed to get config: %v", err)
+		return
+	}
+
+	// Append to buffer
+	signalBuf, err := cache.AddIndexToEcg(ctx, n)
+	if err != nil {
+		go log.Printf("[UDP_SERVICE] Cache error: %v", err)
+		return
+	}
+
+	length := len(signalBuf)
+	if length < conf.ChunksSize*2 || length%conf.ChunksSize != 0 {
+		return
+	}
+
+	// Trim buffer to prevent unbounded growth
+	if length > 10000 {
+		signalBuf = signalBuf[length-10000:]
+	}
+
+	signal := &types.EcgSignal{
+		Signal: dsp.Signal{
+			SampleRate: float64(lib.ECG_HZ),
+			Signal:     signalBuf,
+		},
+		ChunksSize: conf.ChunksSize,
+	}
+
+	// Handle heartbeat data
+	processHeartBeat(signal, c)
+}
+
+func processHeartBeat(c *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
 	data, err := c.Normalize()
 	if err != nil {
+		log.Printf("[ERROR] Normalize failed: %v", err)
 		return
-	}
-
-	data, err = data.LowPassFilter(9)
-	if err != nil {
-		return
-	}
-
-	if len(data.Signal)%int(data.SampleRate*10) == 0 {
-		newData := getLastSeconds(data, time.Second*8)
-		spectrum, _ := newData.FrequencySpectrum()
-		wsChan <- types.WebSocketEvent{
-			Event: "spectrum",
-			Data: SpectrumWSEvent{
-				Spectrum:  spectrum.Spectrum,
-				Frequency: spectrum.Frequencies,
-			},
-		}
-	}
-
-	if c.FilterType != 0 {
-		switch c.FilterType {
-		case 1:
-			data, err = c.LowPassFilter(c.MaxPass)
-		case 2:
-			data, err = c.HighPassFilter(c.MinPass)
-		case 3:
-			data, err = c.BandPassFilter(c.MinPass, c.MaxPass)
-		}
-		if err != nil {
-			return
-		}
 	}
 
 	rPeak := dsp.GetRPeaks(&c.Signal)
+	if c.ChunksSize <= 0 || c.ChunksSize > len(data.Signal) {
+		log.Printf("[ERROR] Invalid chunk size: %d, signal length: %d", c.ChunksSize, len(data.Signal))
+		return
+	}
 
-	wsChan <- types.WebSocketEvent{
+	select {
+	case wsChan <- types.WebSocketEvent{
 		Event: "ekg-changes",
 		Data: EcgWSEvent{
 			Signals: data.Signal[len(data.Signal)-c.ChunksSize:],
 			Avg:     rPeak.Avg(),
 		},
+	}:
+	default:
+		log.Println("[ERROR] Dropped ekg event: channel full")
 	}
-}
-
-func UpdateSpectrum(s *types.EcgSignal, wsChan chan<- types.WebSocketEvent) {
-	data, err := s.Normalize()
-	if err != nil {
-		return
-	}
-	newData := getLastSeconds(data, time.Second*8)
-	spectrum, _ := newData.FrequencySpectrum()
-	wsChan <- types.WebSocketEvent{
-		Event: "spectrum-changes",
-		Data: SpectrumWSEvent{
-			Spectrum:  spectrum.Spectrum,
-			Frequency: spectrum.Frequencies,
-		},
-	}
-}
-
-func getLastSeconds(s *dsp.Signal, dur time.Duration) *dsp.Signal {
-	length := int(s.SampleRate * dur.Seconds())
-	if length >= len(s.Signal) {
-		return s
-	}
-	s.Signal = s.Signal[len(s.Signal)-length:]
-	return s
 }
