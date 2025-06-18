@@ -6,32 +6,68 @@ import (
 	"sia/backend/handler"
 	"sia/backend/lib"
 	"sia/backend/types"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-// Allow all origins for development purposes
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Adjust as needed for production security
-	},
+// Constants for performance tuning
+const (
+	WriteTimeout = 2 * time.Second // Matches handler.WebSocketHandler
+)
+
+// WebSocketServer manages WebSocket connections
+type WebSocketServer struct {
+	upgrader websocket.Upgrader
+	handler  *handler.WebSocketHandler
 }
 
-func ListenToWebSocket(w http.ResponseWriter, r *http.Request, config *cache.Config, wsChan <-chan types.WebSocketEvent) {
-	lib.Print(lib.WEBSOCKET_SERVICE, "Starting websocket server")
-	c, err := upgrader.Upgrade(w, r, nil)
+// NewWebSocketServer initializes the WebSocket server
+func NewWebSocketServer(config *cache.Config, allowedOrigins []string) *WebSocketServer {
+	return &WebSocketServer{
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
+		handler: handler.NewWebSocketHandler(config),
+	}
+}
+
+// ListenToWebSocket handles WebSocket connections
+func (s *WebSocketServer) ListenToWebSocket(w http.ResponseWriter, r *http.Request, wsChan <-chan types.WebSocketEvent) {
+	// Async logging for connection start
+	go lib.Print(lib.WEBSOCKET_SERVICE, "Starting websocket server")
+
+	c, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		lib.Print(lib.WEBSOCKET_SERVICE, "Upgrade error:", err)
+		go lib.Print(lib.WEBSOCKET_SERVICE, "Upgrade error: %v", err)
 		return
 	}
 	defer c.Close()
 
+	// Signal channel to stop the writer goroutine
+	done := make(chan struct{})
+
 	// Write messages to WebSocket from wsChan
 	go func() {
-		for data := range wsChan {
-			if err := c.WriteJSON(data); err != nil {
-				lib.Print(lib.WEBSOCKET_SERVICE, "WriteJSON error:", err)
-				break
+		defer close(done) // Ensure done is closed when writer exits
+		for {
+			select {
+			case data, ok := <-wsChan:
+				if !ok {
+					return // Channel closed
+				}
+				if err := c.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
+					go lib.Print(lib.WEBSOCKET_SERVICE, "SetWriteDeadline error: %v", err)
+					return
+				}
+				if err := c.WriteJSON(data); err != nil {
+					go lib.Print(lib.WEBSOCKET_SERVICE, "WriteJSON error: %v", err)
+					return
+				}
+			case <-done:
+				return
 			}
 		}
 	}()
@@ -40,10 +76,13 @@ func ListenToWebSocket(w http.ResponseWriter, r *http.Request, config *cache.Con
 	for {
 		mt, message, err := c.ReadMessage()
 		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, "ReadMessage error:", err)
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				go lib.Print(lib.WEBSOCKET_SERVICE, "WebSocket closed normally: %v", err)
+			} else {
+				go lib.Print(lib.WEBSOCKET_SERVICE, "ReadMessage error: %v", err)
+			}
 			break
 		}
-		// Pass the message to the handler
-		handler.HandleWebsocketEvent(c, mt, message, config)
+		s.handler.HandleWebsocketEvent(c, mt, message)
 	}
 }

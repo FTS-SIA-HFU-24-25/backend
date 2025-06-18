@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sia/backend/cache"
 	"sia/backend/lib"
 	"sia/backend/types"
@@ -12,84 +11,89 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Constants for performance tuning
+const (
+	WriteTimeout = 3 * time.Second // Timeout for WebSocket writes
+)
+
+// WebSocketIncomingEvent represents incoming WebSocket messages
 type WebSocketIncomingEvent struct {
-	Event int    `json:"event"`
-	Data  string `json:"data"`
+	Event int             `json:"event"`
+	Data  json.RawMessage `json:"data"` // Use RawMessage to delay parsing
 }
 
-func HandleWebsocketEvent(c *websocket.Conn, mt int, message []byte, config *cache.Config) {
-	var requestData WebSocketIncomingEvent
+// WebSocketHandler manages WebSocket event processing
+type WebSocketHandler struct {
+	config *cache.Config
+}
 
-	err := json.Unmarshal(message, &requestData)
-	if err != nil {
-		lib.Print(lib.WEBSOCKET_SERVICE, err)
+// NewWebSocketHandler initializes the handler
+func NewWebSocketHandler(config *cache.Config) *WebSocketHandler {
+	return &WebSocketHandler{config: config}
+}
+
+// HandleWebsocketEvent processes WebSocket messages
+func (h *WebSocketHandler) HandleWebsocketEvent(c *websocket.Conn, mt int, message []byte) {
+	var requestData WebSocketIncomingEvent
+	if err := json.Unmarshal(message, &requestData); err != nil {
+		go lib.Print(lib.WEBSOCKET_SERVICE, err)
 		return
 	}
 
-	lib.Print(lib.WEBSOCKET_SERVICE, fmt.Sprintf("Ping > %d", time.Now().Unix()))
+	// Async logging for ping
+	go lib.Print(lib.WEBSOCKET_SERVICE, "Ping > %d", time.Now().Unix())
 
+	var num int
+
+	ctx := context.Background()
 	switch requestData.Event {
 	case types.PING:
-		conf, err := config.GetConfig(context.Background())
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-		err = c.WriteJSON(types.WebSocketEvent{
-			Event: "pong",
-			Data:  conf,
-		})
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-	case types.CONFIG_UPDATE:
-		var conf types.WebSocketConfigResponse
-		err := json.Unmarshal([]byte(requestData.Data), &conf)
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-		err = config.UpdateConfig(context.Background(), conf)
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-	case types.START_ECG:
-		conf, err := config.GetConfig(context.Background())
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-		conf.StartReceiveData = 1
-		err = config.Set(context.Background(), "config", *conf)
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-	case types.STOP_ECG:
-		conf, err := config.GetConfig(context.Background())
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-		conf.StartReceiveData = 0
-		err = config.Set(context.Background(), "config", *conf)
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-	case types.SPECTRUM_UPDATE:
-		conf, err := config.GetConfig(context.Background())
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
-		conf.SpectrumUpdateRequest = 1
-		err = config.Set(context.Background(), "config", *conf)
-		if err != nil {
-			lib.Print(lib.WEBSOCKET_SERVICE, err)
-			return
-		}
+		h.handlePing(c, ctx)
+		json.Unmarshal(requestData.Data, &num)
+		lib.Print(lib.WEBSOCKET_SERVICE, num)
+		go h.prio(c, ctx, num)
+		return
+	default:
+		go lib.Print(lib.WEBSOCKET_SERVICE, "Unknown event: %d", requestData.Event)
+	}
+}
+
+// handlePing sends a pong response
+func (h *WebSocketHandler) handlePing(c *websocket.Conn, ctx context.Context) {
+	conf, err := h.config.GetConfig(ctx)
+	if err != nil {
+		go lib.Print(lib.WEBSOCKET_SERVICE, err)
+		return
+	}
+
+	// Set write deadline to prevent blocking
+	if err := c.SetWriteDeadline(time.Now().Add(WriteTimeout)); err != nil {
+		go lib.Print(lib.WEBSOCKET_SERVICE, err)
+		return
+	}
+
+	if err := c.WriteJSON(types.WebSocketEvent{
+		Event: "pong",
+		Data:  conf,
+	}); err != nil {
+		go lib.Print(lib.WEBSOCKET_SERVICE, err)
+	}
+}
+
+func (h *WebSocketHandler) prio(c *websocket.Conn, ctx context.Context, prioWhat int) {
+	conf, err := h.config.GetConfig(ctx)
+	if err != nil {
+		return
+	}
+
+	if conf.Priotize == prioWhat {
+		return
+	}
+
+	conf.Priotize = prioWhat
+
+	err = h.config.UpdateConfig(ctx, *conf)
+	if err != nil {
+		return
 	}
 }
