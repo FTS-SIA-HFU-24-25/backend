@@ -12,23 +12,13 @@ import (
 
 func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, outputChan chan<- types.WebSocketEvent) {
 	dataType, data := translator.TranslateUDPBinary(buffer)
-	config, err := conf.GetConfig(context.Background())
-	if err != nil {
-		return
-	}
 
 	switch dataType {
 	case types.UDP_EKG_SENSOR:
-		if config.Priotize != types.PRIO_ECG {
-			return
-		}
 		ekg := data.(*types.EKG_SENSOR)
 		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("EKG sensor data: %v\n", ekg.Value))
 		updateEcgChannel(ekg.Value, cache, conf, outputChan)
 	case types.UDP_TEMPERATURE_SENSOR:
-		if config.Priotize != types.PRIO_ECG {
-			return
-		}
 		if temp, ok := data.(*types.TEMPERATURE_SENSOR); ok {
 			select {
 			case outputChan <- types.WebSocketEvent{Event: "temp", Data: temp}:
@@ -37,9 +27,6 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, out
 			}
 		}
 	case types.UDP_GYRO_SENSOR:
-		if config.Priotize != types.PRIO_GYRO {
-			return
-		}
 		if gyro, ok := data.(*types.GYRO_SENSOR); ok {
 			select {
 			case outputChan <- types.WebSocketEvent{Event: "gyro", Data: gyro}:
@@ -48,9 +35,6 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, out
 			}
 		}
 	case types.UDP_ACCEL_SENSOR:
-		if config.Priotize != types.PRIO_GYRO {
-			return
-		}
 		if accel, ok := data.(*types.ACCEL_SENSOR); ok {
 			select {
 			case outputChan <- types.WebSocketEvent{Event: "accel", Data: accel}:
