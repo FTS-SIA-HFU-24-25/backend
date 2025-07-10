@@ -30,6 +30,7 @@ type Cache struct {
 	batch     []float64    // Buffer for batching writes
 	batchIdx  int          // Current batch index
 	mu        sync.RWMutex // For cache Set operations
+	ecgTotalSamples uint64 
 }
 
 // Config manages WebSocket configuration
@@ -93,26 +94,31 @@ func (c *Cache) AddIndexToEcg(ctx context.Context, index float64) ([]float64, er
 	c.batchIdx++
 
 	if c.batchIdx < BatchSize {
-		// Return current view without cache update
 		return c.getCurrentView(), nil
 	}
 
-	// Process batch
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Update ring buffer
-	for i := range c.batchIdx {
+	for i := 0; i < c.batchIdx; i++ {
 		ringPos := atomic.AddUint64(&c.ringPos, 1) - 1
 		ringIdx := ringPos % uint64(len(c.ringBuf))
 		c.ringBuf[ringIdx] = c.batch[i]
 		if ringLen := atomic.AddUint64(&c.ringLen, 1); ringLen > uint64(len(c.ringBuf)) {
 			atomic.StoreUint64(&c.ringLen, uint64(len(c.ringBuf)))
 		}
-	}
-	c.batchIdx = 0 // Reset batch
 
-	// Update cache only when batch is full
+		// Track total ECG samples and clear if needed
+		total := atomic.AddUint64(&c.ecgTotalSamples, 1)
+		if total >= 45000 {
+			lib.Print(lib.CACHE_SERVICE, "Reached 45000 ECG samples, clearing cache")
+			c.clearUnsafe(ctx)
+			atomic.StoreUint64(&c.ecgTotalSamples, 0)
+			break // Stop further processing this batch, as buffer was reset
+		}
+	}
+
+	c.batchIdx = 0
 	result := c.getCurrentView()
 	if err := c.cache.Set(ctx, c.keyPrefix, result); err != nil {
 		return nil, err
@@ -157,12 +163,8 @@ func (c *Cache) GetLength(ctx context.Context) (int, error) {
 func (c *Cache) ClearValues(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	c.ringBuf = make([]float64, len(c.ringBuf))
-	atomic.StoreUint64(&c.ringPos, 0)
-	atomic.StoreUint64(&c.ringLen, 0)
-	c.batchIdx = 0
-	return c.cache.Set(ctx, c.keyPrefix, c.ringBuf[:0])
+	c.clearUnsafe(ctx)
+	return nil
 }
 
 // GetConfig retrieves the cached configuration
@@ -193,4 +195,12 @@ func (c *Config) UpdateConfig(ctx context.Context, newConfig types.WebSocketConf
 	}
 	c.cachedConfig = newConfig
 	return nil
+}
+
+func (c *Cache) clearUnsafe(ctx context.Context) {
+	c.ringBuf = make([]float64, len(c.ringBuf))
+	atomic.StoreUint64(&c.ringPos, 0)
+	atomic.StoreUint64(&c.ringLen, 0)
+	c.batchIdx = 0
+	c.cache.Set(ctx, c.keyPrefix, c.ringBuf[:0])
 }

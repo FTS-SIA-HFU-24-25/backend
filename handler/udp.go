@@ -16,7 +16,6 @@ func HandleUDPRequest(buffer []byte, cache *cache.Cache, conf *cache.Config, out
 	switch dataType {
 	case types.UDP_EKG_SENSOR:
 		ekg := data.(*types.EKG_SENSOR)
-		lib.Print(lib.UDP_SERVICE, fmt.Sprintf("EKG sensor data: %v\n", ekg.Value))
 		updateEcgChannel(ekg.Value, cache, conf, outputChan)
 	case types.UDP_TEMPERATURE_SENSOR:
 		if temp, ok := data.(*types.TEMPERATURE_SENSOR); ok {
